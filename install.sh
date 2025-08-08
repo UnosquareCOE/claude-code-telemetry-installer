@@ -13,6 +13,16 @@ CLI_OVERRIDE_PROTOCOL=""
 CLI_OVERRIDE_LOG_PROMPTS=""
 CLI_OVERRIDE_RESOURCE_ATTRIBUTES=""
 
+# Default environment variable values (from .env.example)
+DEFAULT_CLAUDE_CODE_ENABLE_TELEMETRY="1"
+DEFAULT_OTEL_EXPORTER_OTLP_ENDPOINT="http://localhost:4317"
+DEFAULT_OTEL_EXPORTER_OTLP_PROTOCOL="grpc"
+DEFAULT_OTEL_LOGS_EXPORTER="otlp"
+DEFAULT_OTEL_LOG_USER_PROMPTS="1"
+DEFAULT_OTEL_METRICS_EXPORTER="otlp"
+DEFAULT_OTEL_RESOURCE_ATTRIBUTES="department=engineering_success"
+DEFAULT_OTEL_SERVICE_NAME="claude-code"
+
 # Function to detect the operating system
 detect_os() {
     case "$(uname -s)" in
@@ -57,23 +67,36 @@ get_settings_dir() {
 
 # Function to load environment variables from .env files
 load_env_variables() {
+    # Set default values first
+    export CLAUDE_CODE_ENABLE_TELEMETRY="$DEFAULT_CLAUDE_CODE_ENABLE_TELEMETRY"
+    export OTEL_EXPORTER_OTLP_ENDPOINT="$DEFAULT_OTEL_EXPORTER_OTLP_ENDPOINT"
+    export OTEL_EXPORTER_OTLP_PROTOCOL="$DEFAULT_OTEL_EXPORTER_OTLP_PROTOCOL"
+    export OTEL_LOGS_EXPORTER="$DEFAULT_OTEL_LOGS_EXPORTER"
+    export OTEL_LOG_USER_PROMPTS="$DEFAULT_OTEL_LOG_USER_PROMPTS"
+    export OTEL_METRICS_EXPORTER="$DEFAULT_OTEL_METRICS_EXPORTER"
+    export OTEL_RESOURCE_ATTRIBUTES="$DEFAULT_OTEL_RESOURCE_ATTRIBUTES"
+    export OTEL_SERVICE_NAME="$DEFAULT_OTEL_SERVICE_NAME"
+    
     # Try to load from .env first, then fallback to .env.example
     local env_file=".env"
     if [[ ! -f "$env_file" ]]; then
         env_file=".env.example"
         if [[ ! -f "$env_file" ]]; then
-            echo "Error: Neither .env nor .env.example found in current directory" >&2
-            exit 1
+            echo "Using embedded default values (no .env or .env.example found)"
+        else
+            echo "Using .env.example as .env file not found"
+            # Source the environment file
+            set -a  # automatically export all variables
+            source "$env_file"
+            set +a  # turn off automatic export
         fi
-        echo "Using .env.example as .env file not found"
     else
         echo "Loading environment variables from .env"
+        # Source the environment file
+        set -a  # automatically export all variables
+        source "$env_file"
+        set +a  # turn off automatic export
     fi
-    
-    # Source the environment file
-    set -a  # automatically export all variables
-    source "$env_file"
-    set +a  # turn off automatic export
     
     # Apply command-line overrides (these take precedence over file values)
     if [[ -n "$CLI_OVERRIDE_ENDPOINT" ]]; then
