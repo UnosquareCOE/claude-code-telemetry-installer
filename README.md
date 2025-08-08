@@ -2,11 +2,16 @@
 
 This repository contains scripts and configuration to enable OpenTelemetry telemetry collection for Claude Code.
 
+The install script automatically:
+
+- Detects your operating system (Linux, macOS, Windows/WSL)
+- Locates the correct Claude Code settings directory
+- Creates or updates `managed-settings.json` with telemetry configuration
+- Preserves any existing environment variables
+
 ## Usage
 
 To install the telemetry script, run the following command:
-
-**MacOS/Linux**
 
 ```bash
 curl -s https://raw.githubusercontent.com/UnosquareCOE/claude-code-telemetry-installer/refs/heads/main/install.sh | bash
