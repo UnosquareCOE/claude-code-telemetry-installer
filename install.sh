@@ -1,6 +1,6 @@
 #!/bin/bash
 
-# Cross-platform script to merge telemetry environment variables with Claude Code managed settings
+# Cross-platform script to configure telemetry environment variables in Claude Code managed settings
 # Works on Linux, macOS, and Windows (with Git Bash/WSL)
 
 set -e
@@ -65,9 +65,9 @@ get_settings_dir() {
     esac
 }
 
-# Function to load environment variables from .env files
-load_env_variables() {
-    # Set default values first
+# Function to set environment variables with defaults and command-line overrides
+set_env_variables() {
+    # Set default values
     export CLAUDE_CODE_ENABLE_TELEMETRY="$DEFAULT_CLAUDE_CODE_ENABLE_TELEMETRY"
     export OTEL_EXPORTER_OTLP_ENDPOINT="$DEFAULT_OTEL_EXPORTER_OTLP_ENDPOINT"
     export OTEL_EXPORTER_OTLP_PROTOCOL="$DEFAULT_OTEL_EXPORTER_OTLP_PROTOCOL"
@@ -77,28 +77,9 @@ load_env_variables() {
     export OTEL_RESOURCE_ATTRIBUTES="$DEFAULT_OTEL_RESOURCE_ATTRIBUTES"
     export OTEL_SERVICE_NAME="$DEFAULT_OTEL_SERVICE_NAME"
     
-    # Try to load from .env first, then fallback to .env.example
-    local env_file=".env"
-    if [[ ! -f "$env_file" ]]; then
-        env_file=".env.example"
-        if [[ ! -f "$env_file" ]]; then
-            echo "Using embedded default values (no .env or .env.example found)"
-        else
-            echo "Using .env.example as .env file not found"
-            # Source the environment file
-            set -a  # automatically export all variables
-            source "$env_file"
-            set +a  # turn off automatic export
-        fi
-    else
-        echo "Loading environment variables from .env"
-        # Source the environment file
-        set -a  # automatically export all variables
-        source "$env_file"
-        set +a  # turn off automatic export
-    fi
+    echo "Using embedded default values"
     
-    # Apply command-line overrides (these take precedence over file values)
+    # Apply command-line overrides (these take precedence over default values)
     if [[ -n "$CLI_OVERRIDE_ENDPOINT" ]]; then
         export OTEL_EXPORTER_OTLP_ENDPOINT="$CLI_OVERRIDE_ENDPOINT"
         echo "Override: OTEL_EXPORTER_OTLP_ENDPOINT=$CLI_OVERRIDE_ENDPOINT"
@@ -270,8 +251,8 @@ main() {
     echo "Claude Code Environment Variable Merger"
     echo "======================================="
     
-    # Load environment variables from .env or .env.example
-    load_env_variables
+    # Set environment variables with defaults and overrides
+    set_env_variables
     
     # Detect operating system
     local os
@@ -333,7 +314,7 @@ main() {
 if [[ "${1:-}" == "--help" ]] || [[ "${1:-}" == "-h" ]]; then
     echo "Claude Code Telemetry Environment Variable Merger"
     echo ""
-    echo "This script merges OpenTelemetry environment variables from .env files into Claude Code's managed-settings.json file."
+    echo "This script configures OpenTelemetry environment variables in Claude Code's managed-settings.json file."
     echo ""
     echo "Usage: $0 [OPTIONS]"
     echo ""
@@ -347,13 +328,13 @@ if [[ "${1:-}" == "--help" ]] || [[ "${1:-}" == "-h" ]]; then
     echo "  -h, --help                      Show this help message"
     echo ""
     echo "Examples:"
-    echo "  $0                                          # Use defaults from .env files"
+    echo "  $0                                          # Use embedded defaults"
     echo "  $0 --endpoint http://otel.company.com:4317  # Override endpoint"
     echo "  $0 --service-name dev-team --protocol http # Multiple overrides"
     echo ""
     echo "The script automatically:"
-    echo "  - Loads environment variables from .env (or falls back to .env.example)"
-    echo "  - Applies command-line overrides (these take precedence over file values)"
+    echo "  - Uses embedded default environment variables"
+    echo "  - Applies command-line overrides (these take precedence over defaults)"
     echo "  - Detects your operating system (Linux, macOS, Windows/WSL)"
     echo "  - Locates the correct Claude Code settings directory"
     echo "  - Creates or updates managed-settings.json with telemetry environment variables"
@@ -361,8 +342,7 @@ if [[ "${1:-}" == "--help" ]] || [[ "${1:-}" == "-h" ]]; then
     echo ""
     echo "Environment variable sources (in order of precedence):"
     echo "  1. Command-line flags (highest priority)"
-    echo "  2. .env file in current directory"
-    echo "  3. .env.example file in current directory (fallback)"
+    echo "  2. Embedded default values (fallback)"
     echo ""
     echo "Environment variables:"
     echo "  - CLAUDE_CODE_ENABLE_TELEMETRY   Enable/disable telemetry (0|1)"
@@ -376,7 +356,6 @@ if [[ "${1:-}" == "--help" ]] || [[ "${1:-}" == "-h" ]]; then
     echo ""
     echo "Requirements:"
     echo "  - jq (required for JSON manipulation)"
-    echo "  - .env or .env.example file in current directory"
     echo ""
     echo "Supported platforms:"
     echo "  - Linux"
