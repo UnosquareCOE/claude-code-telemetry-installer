@@ -5,6 +5,14 @@
 
 set -e
 
+# Global variables to store command-line overrides
+CLI_OVERRIDE_ENDPOINT=""
+CLI_OVERRIDE_SERVICE_NAME=""
+CLI_OVERRIDE_ENABLE_TELEMETRY=""
+CLI_OVERRIDE_PROTOCOL=""
+CLI_OVERRIDE_LOG_PROMPTS=""
+CLI_OVERRIDE_RESOURCE_ATTRIBUTES=""
+
 # Function to detect the operating system
 detect_os() {
     case "$(uname -s)" in
@@ -66,6 +74,32 @@ load_env_variables() {
     set -a  # automatically export all variables
     source "$env_file"
     set +a  # turn off automatic export
+    
+    # Apply command-line overrides (these take precedence over file values)
+    if [[ -n "$CLI_OVERRIDE_ENDPOINT" ]]; then
+        export OTEL_EXPORTER_OTLP_ENDPOINT="$CLI_OVERRIDE_ENDPOINT"
+        echo "Override: OTEL_EXPORTER_OTLP_ENDPOINT=$CLI_OVERRIDE_ENDPOINT"
+    fi
+    if [[ -n "$CLI_OVERRIDE_SERVICE_NAME" ]]; then
+        export OTEL_SERVICE_NAME="$CLI_OVERRIDE_SERVICE_NAME"
+        echo "Override: OTEL_SERVICE_NAME=$CLI_OVERRIDE_SERVICE_NAME"
+    fi
+    if [[ -n "$CLI_OVERRIDE_ENABLE_TELEMETRY" ]]; then
+        export CLAUDE_CODE_ENABLE_TELEMETRY="$CLI_OVERRIDE_ENABLE_TELEMETRY"
+        echo "Override: CLAUDE_CODE_ENABLE_TELEMETRY=$CLI_OVERRIDE_ENABLE_TELEMETRY"
+    fi
+    if [[ -n "$CLI_OVERRIDE_PROTOCOL" ]]; then
+        export OTEL_EXPORTER_OTLP_PROTOCOL="$CLI_OVERRIDE_PROTOCOL"
+        echo "Override: OTEL_EXPORTER_OTLP_PROTOCOL=$CLI_OVERRIDE_PROTOCOL"
+    fi
+    if [[ -n "$CLI_OVERRIDE_LOG_PROMPTS" ]]; then
+        export OTEL_LOG_USER_PROMPTS="$CLI_OVERRIDE_LOG_PROMPTS"
+        echo "Override: OTEL_LOG_USER_PROMPTS=$CLI_OVERRIDE_LOG_PROMPTS"
+    fi
+    if [[ -n "$CLI_OVERRIDE_RESOURCE_ATTRIBUTES" ]]; then
+        export OTEL_RESOURCE_ATTRIBUTES="$CLI_OVERRIDE_RESOURCE_ATTRIBUTES"
+        echo "Override: OTEL_RESOURCE_ATTRIBUTES=$CLI_OVERRIDE_RESOURCE_ATTRIBUTES"
+    fi
 }
 
 # Function to create managed-settings.json with proper structure
@@ -126,6 +160,71 @@ EOF
     echo "Successfully updated managed-settings.json"
 }
 
+# Function to parse command-line arguments
+parse_arguments() {
+    while [[ $# -gt 0 ]]; do
+        case "$1" in
+            --endpoint)
+                if [[ -z "$2" ]]; then
+                    echo "Error: --endpoint requires a value" >&2
+                    exit 1
+                fi
+                CLI_OVERRIDE_ENDPOINT="$2"
+                shift 2
+                ;;
+            --service-name)
+                if [[ -z "$2" ]]; then
+                    echo "Error: --service-name requires a value" >&2
+                    exit 1
+                fi
+                CLI_OVERRIDE_SERVICE_NAME="$2"
+                shift 2
+                ;;
+            --enable-telemetry)
+                if [[ -z "$2" ]] || [[ "$2" != "0" && "$2" != "1" ]]; then
+                    echo "Error: --enable-telemetry requires 0 or 1" >&2
+                    exit 1
+                fi
+                CLI_OVERRIDE_ENABLE_TELEMETRY="$2"
+                shift 2
+                ;;
+            --protocol)
+                if [[ -z "$2" ]] || [[ "$2" != "grpc" && "$2" != "http" ]]; then
+                    echo "Error: --protocol requires 'grpc' or 'http'" >&2
+                    exit 1
+                fi
+                CLI_OVERRIDE_PROTOCOL="$2"
+                shift 2
+                ;;
+            --log-prompts)
+                if [[ -z "$2" ]] || [[ "$2" != "0" && "$2" != "1" ]]; then
+                    echo "Error: --log-prompts requires 0 or 1" >&2
+                    exit 1
+                fi
+                CLI_OVERRIDE_LOG_PROMPTS="$2"
+                shift 2
+                ;;
+            --resource-attributes)
+                if [[ -z "$2" ]]; then
+                    echo "Error: --resource-attributes requires a value" >&2
+                    exit 1
+                fi
+                CLI_OVERRIDE_RESOURCE_ATTRIBUTES="$2"
+                shift 2
+                ;;
+            --help|-h)
+                # Help is handled later in the script
+                return 0
+                ;;
+            *)
+                echo "Error: Unknown option '$1'" >&2
+                echo "Use --help to see available options" >&2
+                exit 1
+                ;;
+        esac
+    done
+}
+
 # Function to display the current settings
 display_settings() {
     local settings_file="$1"
@@ -142,6 +241,9 @@ display_settings() {
 
 # Main execution
 main() {
+    # Parse command-line arguments first
+    parse_arguments "$@"
+    
     echo "Claude Code Environment Variable Merger"
     echo "======================================="
     
@@ -210,28 +312,44 @@ if [[ "${1:-}" == "--help" ]] || [[ "${1:-}" == "-h" ]]; then
     echo ""
     echo "This script merges OpenTelemetry environment variables from .env files into Claude Code's managed-settings.json file."
     echo ""
-    echo "Usage: $0"
+    echo "Usage: $0 [OPTIONS]"
+    echo ""
+    echo "OPTIONS:"
+    echo "  --endpoint <url>                Set OTEL_EXPORTER_OTLP_ENDPOINT"
+    echo "  --service-name <name>           Set OTEL_SERVICE_NAME"
+    echo "  --enable-telemetry <0|1>        Set CLAUDE_CODE_ENABLE_TELEMETRY"
+    echo "  --protocol <grpc|http>          Set OTEL_EXPORTER_OTLP_PROTOCOL"
+    echo "  --log-prompts <0|1>             Set OTEL_LOG_USER_PROMPTS"
+    echo "  --resource-attributes <attrs>   Set OTEL_RESOURCE_ATTRIBUTES"
+    echo "  -h, --help                      Show this help message"
+    echo ""
+    echo "Examples:"
+    echo "  $0                                          # Use defaults from .env files"
+    echo "  $0 --endpoint http://otel.company.com:4317  # Override endpoint"
+    echo "  $0 --service-name dev-team --protocol http # Multiple overrides"
     echo ""
     echo "The script automatically:"
     echo "  - Loads environment variables from .env (or falls back to .env.example)"
+    echo "  - Applies command-line overrides (these take precedence over file values)"
     echo "  - Detects your operating system (Linux, macOS, Windows/WSL)"
     echo "  - Locates the correct Claude Code settings directory"
     echo "  - Creates or updates managed-settings.json with telemetry environment variables"
     echo "  - Preserves existing environment variables if any"
     echo ""
-    echo "Environment variable sources (in order of preference):"
-    echo "  1. .env file in current directory"
-    echo "  2. .env.example file in current directory (fallback)"
+    echo "Environment variable sources (in order of precedence):"
+    echo "  1. Command-line flags (highest priority)"
+    echo "  2. .env file in current directory"
+    echo "  3. .env.example file in current directory (fallback)"
     echo ""
-    echo "Expected environment variables:"
-    echo "  - CLAUDE_CODE_ENABLE_TELEMETRY"
-    echo "  - OTEL_EXPORTER_OTLP_ENDPOINT"
-    echo "  - OTEL_EXPORTER_OTLP_PROTOCOL"
-    echo "  - OTEL_LOGS_EXPORTER"
-    echo "  - OTEL_LOG_USER_PROMPTS"
-    echo "  - OTEL_METRICS_EXPORTER"
-    echo "  - OTEL_RESOURCE_ATTRIBUTES"
-    echo "  - OTEL_SERVICE_NAME"
+    echo "Environment variables:"
+    echo "  - CLAUDE_CODE_ENABLE_TELEMETRY   Enable/disable telemetry (0|1)"
+    echo "  - OTEL_EXPORTER_OTLP_ENDPOINT    OpenTelemetry collector endpoint"
+    echo "  - OTEL_EXPORTER_OTLP_PROTOCOL    Export protocol (grpc|http)"
+    echo "  - OTEL_LOGS_EXPORTER             Logs exporter type"
+    echo "  - OTEL_LOG_USER_PROMPTS          Log user prompts (0|1)"
+    echo "  - OTEL_METRICS_EXPORTER          Metrics exporter type"
+    echo "  - OTEL_RESOURCE_ATTRIBUTES       Resource attributes (key=value pairs)"
+    echo "  - OTEL_SERVICE_NAME              Service name identifier"
     echo ""
     echo "Requirements:"
     echo "  - jq (required for JSON manipulation)"
@@ -246,4 +364,4 @@ if [[ "${1:-}" == "--help" ]] || [[ "${1:-}" == "-h" ]]; then
 fi
 
 # Run main function
-main
+main "$@"

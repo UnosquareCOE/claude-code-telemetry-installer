@@ -1,6 +1,28 @@
-# Claude Code Telemetry Setup
+# Claude Code Telemetry Installer
 
 This repository contains scripts and configuration to enable OpenTelemetry telemetry collection for Claude Code.
+
+## Usage
+
+To install the telemetry script, run the following command:
+
+**MacOS/Linux**
+
+```bash
+curl -s https://raw.githubusercontent.com/UnosquareCOE/claude-code-telemetry-installer/refs/heads/main/install.sh | bash
+```
+
+**Windows**
+
+```powershell
+Invoke-WebRequest -Uri "https://raw.githubusercontent.com/UnosquareCOE/claude-code-telemetry-installer/refs/heads/main/install.sh" -UseBasicParsing | Select-Object -ExpandProperty Content | bash
+```
+
+For local development or when you need to override specific settings, see the [Command-Line Overrides](#command-line-overrides) section below.
+
+---
+
+# Local development
 
 ## Quick Start
 
@@ -38,12 +60,12 @@ The following environment variables control Claude Code's telemetry behavior:
 
 ### Using .env files
 
-The installation script looks for configuration in the following order:
+The installation script loads configuration from files in this order:
 
 1. `.env` file in the current directory (if exists)
 2. `.env.example` file as fallback
 
-To customize your configuration:
+Command-line flags override values from both files. To customize your configuration:
 
 ```bash
 # Copy the example and modify as needed
@@ -79,6 +101,48 @@ The `install.sh` script automatically:
 # Get help and see all options
 ./install.sh --help
 ```
+
+### Command-Line Overrides
+
+You can override environment variables directly via command-line flags, which take precedence over values in `.env` files:
+
+```bash
+# Override endpoint and service name
+./install.sh --endpoint https://otel.company.com:4317 --service-name "dev-team-claude"
+
+# Override protocol and disable user prompt logging
+./install.sh --protocol http --log-prompts 0
+
+# Override resource attributes
+./install.sh --resource-attributes "department=engineering,environment=production"
+
+# Multiple overrides
+./install.sh --endpoint https://collector.example.com:4317 \
+             --service-name "my-team-claude" \
+             --enable-telemetry 1 \
+             --protocol grpc \
+             --log-prompts 1 \
+             --resource-attributes "team=platform,env=dev"
+```
+
+#### Available Flags
+
+| Flag | Environment Variable | Description | Valid Values |
+|------|---------------------|-------------|--------------|
+| `--endpoint <url>` | `OTEL_EXPORTER_OTLP_ENDPOINT` | OpenTelemetry collector endpoint | Any valid URL |
+| `--service-name <name>` | `OTEL_SERVICE_NAME` | Service name for telemetry | Any string |
+| `--enable-telemetry <0\|1>` | `CLAUDE_CODE_ENABLE_TELEMETRY` | Enable/disable telemetry | `0` or `1` |
+| `--protocol <grpc\|http>` | `OTEL_EXPORTER_OTLP_PROTOCOL` | Export protocol | `grpc` or `http` |
+| `--log-prompts <0\|1>` | `OTEL_LOG_USER_PROMPTS` | Enable logging of user prompts | `0` or `1` |
+| `--resource-attributes <attrs>` | `OTEL_RESOURCE_ATTRIBUTES` | Resource attributes | Key=value pairs |
+
+#### Precedence Order
+
+Configuration values are applied in the following order (highest to lowest priority):
+
+1. **Command-line flags** (highest priority)
+2. **`.env` file** in current directory  
+3. **`.env.example` file** (fallback default)
 
 ### Platform Support
 
