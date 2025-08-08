@@ -12,12 +12,6 @@ To install the telemetry script, run the following command:
 curl -s https://raw.githubusercontent.com/UnosquareCOE/claude-code-telemetry-installer/refs/heads/main/install.sh | bash
 ```
 
-**Windows**
-
-```powershell
-Invoke-WebRequest -Uri "https://raw.githubusercontent.com/UnosquareCOE/claude-code-telemetry-installer/refs/heads/main/install.sh" -UseBasicParsing | Select-Object -ExpandProperty Content | bash
-```
-
 For local development or when you need to override specific settings, see the [Command-Line Overrides](#command-line-overrides) section below.
 
 ---
@@ -127,21 +121,21 @@ You can override environment variables directly via command-line flags, which ta
 
 #### Available Flags
 
-| Flag | Environment Variable | Description | Valid Values |
-|------|---------------------|-------------|--------------|
-| `--endpoint <url>` | `OTEL_EXPORTER_OTLP_ENDPOINT` | OpenTelemetry collector endpoint | Any valid URL |
-| `--service-name <name>` | `OTEL_SERVICE_NAME` | Service name for telemetry | Any string |
-| `--enable-telemetry <0\|1>` | `CLAUDE_CODE_ENABLE_TELEMETRY` | Enable/disable telemetry | `0` or `1` |
-| `--protocol <grpc\|http>` | `OTEL_EXPORTER_OTLP_PROTOCOL` | Export protocol | `grpc` or `http` |
-| `--log-prompts <0\|1>` | `OTEL_LOG_USER_PROMPTS` | Enable logging of user prompts | `0` or `1` |
-| `--resource-attributes <attrs>` | `OTEL_RESOURCE_ATTRIBUTES` | Resource attributes | Key=value pairs |
+| Flag                            | Environment Variable           | Description                      | Valid Values     |
+| ------------------------------- | ------------------------------ | -------------------------------- | ---------------- |
+| `--endpoint <url>`              | `OTEL_EXPORTER_OTLP_ENDPOINT`  | OpenTelemetry collector endpoint | Any valid URL    |
+| `--service-name <name>`         | `OTEL_SERVICE_NAME`            | Service name for telemetry       | Any string       |
+| `--enable-telemetry <0\|1>`     | `CLAUDE_CODE_ENABLE_TELEMETRY` | Enable/disable telemetry         | `0` or `1`       |
+| `--protocol <grpc\|http>`       | `OTEL_EXPORTER_OTLP_PROTOCOL`  | Export protocol                  | `grpc` or `http` |
+| `--log-prompts <0\|1>`          | `OTEL_LOG_USER_PROMPTS`        | Enable logging of user prompts   | `0` or `1`       |
+| `--resource-attributes <attrs>` | `OTEL_RESOURCE_ATTRIBUTES`     | Resource attributes              | Key=value pairs  |
 
 #### Precedence Order
 
 Configuration values are applied in the following order (highest to lowest priority):
 
 1. **Command-line flags** (highest priority)
-2. **`.env` file** in current directory  
+2. **`.env` file** in current directory
 3. **`.env.example` file** (fallback default)
 
 ### Platform Support
