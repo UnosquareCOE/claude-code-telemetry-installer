@@ -1,6 +1,6 @@
 #!/bin/bash
 
-# Cross-platform script to configure telemetry environment variables in Claude Code managed settings
+# Cross-platform script to configure telemetry environment variables in Claude Code user settings
 # Works on Linux, macOS, and Windows (with Git Bash/WSL)
 
 set -e
@@ -15,12 +15,13 @@ CLI_OVERRIDE_RESOURCE_ATTRIBUTES=""
 
 # Default environment variable values (from .env.example)
 DEFAULT_CLAUDE_CODE_ENABLE_TELEMETRY="1"
-DEFAULT_OTEL_EXPORTER_OTLP_ENDPOINT="http://localhost:4317"
-DEFAULT_OTEL_EXPORTER_OTLP_PROTOCOL="grpc"
+DEFAULT_OTEL_EXPORTER_OTLP_ENDPOINT="http://cc-otel-collector-nlb-dev-05132f47b9a37526.elb.us-east-1.amazonaws.com:4318"
+DEFAULT_OTEL_EXPORTER_OTLP_PROTOCOL="http/protobuf"
 DEFAULT_OTEL_LOGS_EXPORTER="otlp"
 DEFAULT_OTEL_LOG_USER_PROMPTS="1"
 DEFAULT_OTEL_METRICS_EXPORTER="otlp"
-DEFAULT_OTEL_RESOURCE_ATTRIBUTES="department=engineering_success"
+DEFAULT_OTEL_EXPORTER_OTLP_METRICS_ENDPOINT="http://cc-otel-collector-nlb-dev-05132f47b9a37526.elb.us-east-1.amazonaws.com:4318/v1/metrics"
+DEFAULT_OTEL_RESOURCE_ATTRIBUTES="department=unosquare"
 DEFAULT_OTEL_SERVICE_NAME="claude-code"
 
 # Function to detect the operating system
@@ -45,18 +46,13 @@ detect_os() {
     esac
 }
 
+# The settings file is located at: ~/.claude/settings.json
 # Function to get Claude Code settings directory based on OS
 get_settings_dir() {
     local os="$1"
     case "$os" in
-        linux|wsl)
-            echo "${XDG_CONFIG_HOME:-$HOME/.config}/claude-code"
-            ;;
-        macos)
-            echo "$HOME/Library/Application Support/claude-code"
-            ;;
-        windows)
-            echo "${APPDATA}/claude-code"
+        linux|wsl|macos|windows)
+            echo "$HOME/.claude"
             ;;
         *)
             echo "Unsupported operating system: $os" >&2
@@ -74,6 +70,7 @@ set_env_variables() {
     export OTEL_LOGS_EXPORTER="$DEFAULT_OTEL_LOGS_EXPORTER"
     export OTEL_LOG_USER_PROMPTS="$DEFAULT_OTEL_LOG_USER_PROMPTS"
     export OTEL_METRICS_EXPORTER="$DEFAULT_OTEL_METRICS_EXPORTER"
+    export OTEL_EXPORTER_OTLP_METRICS_ENDPOINT="$DEFAULT_OTEL_EXPORTER_OTLP_METRICS_ENDPOINT"
     export OTEL_RESOURCE_ATTRIBUTES="$DEFAULT_OTEL_RESOURCE_ATTRIBUTES"
     export OTEL_SERVICE_NAME="$DEFAULT_OTEL_SERVICE_NAME"
     
@@ -106,14 +103,14 @@ set_env_variables() {
     fi
 }
 
-# Function to create managed-settings.json with proper structure
-create_managed_settings() {
+# Function to create user ~/.claude/settings.json with proper structure
+create_user_settings() {
     local settings_file="$1"
     local temp_file="${settings_file}.tmp"
     
     # Check if the file already exists
     if [[ -f "$settings_file" ]]; then
-        echo "Found existing managed-settings.json, merging with telemetry environment variables..."
+        echo "Found existing ~/.claude/settings.json, merging with telemetry environment variables..."
         
         # Check if jq is available for JSON manipulation
         if command -v jq >/dev/null 2>&1; then
@@ -124,6 +121,7 @@ create_managed_settings() {
                --arg otel_logs "$OTEL_LOGS_EXPORTER" \
                --arg otel_log_prompts "$OTEL_LOG_USER_PROMPTS" \
                --arg otel_metrics "$OTEL_METRICS_EXPORTER" \
+               --arg otel_metrics_endpoint "$OTEL_EXPORTER_OTLP_METRICS_ENDPOINT" \
                --arg otel_resource "$OTEL_RESOURCE_ATTRIBUTES" \
                --arg otel_service "$OTEL_SERVICE_NAME" \
                '.env.CLAUDE_CODE_ENABLE_TELEMETRY = $claude_telemetry |
@@ -132,6 +130,7 @@ create_managed_settings() {
                 .env.OTEL_LOGS_EXPORTER = $otel_logs |
                 .env.OTEL_LOG_USER_PROMPTS = $otel_log_prompts |
                 .env.OTEL_METRICS_EXPORTER = $otel_metrics |
+                .env.OTEL_EXPORTER_OTLP_METRICS_ENDPOINT = $otel_metrics_endpoint |
                 .env.OTEL_RESOURCE_ATTRIBUTES = $otel_resource |
                 .env.OTEL_SERVICE_NAME = $otel_service' "$settings_file" > "$temp_file"
         else
@@ -140,9 +139,9 @@ create_managed_settings() {
             exit 1
         fi
     else
-        echo "Creating new managed-settings.json with telemetry environment variables..."
+        echo "Creating new ~/.claude/settings.json with telemetry environment variables..."
         
-        # Create new managed-settings.json with all telemetry environment variables from .env
+        # Create new ~/.claude/settings.json with all telemetry environment variables from .env
         cat > "$temp_file" << EOF
 {
   "env": {
@@ -152,6 +151,7 @@ create_managed_settings() {
     "OTEL_LOGS_EXPORTER": "$OTEL_LOGS_EXPORTER",
     "OTEL_LOG_USER_PROMPTS": "$OTEL_LOG_USER_PROMPTS",
     "OTEL_METRICS_EXPORTER": "$OTEL_METRICS_EXPORTER",
+    "OTEL_EXPORTER_OTLP_METRICS_ENDPOINT": "$OTEL_EXPORTER_OTLP_METRICS_ENDPOINT",
     "OTEL_RESOURCE_ATTRIBUTES": "$OTEL_RESOURCE_ATTRIBUTES",
     "OTEL_SERVICE_NAME": "$OTEL_SERVICE_NAME"
   }
@@ -161,7 +161,7 @@ EOF
     
     # Move temp file to final location
     mv "$temp_file" "$settings_file"
-    echo "Successfully updated managed-settings.json"
+    echo "Successfully updated ~/.claude/settings.json"
 }
 
 # Function to parse command-line arguments
@@ -233,7 +233,7 @@ parse_arguments() {
 display_settings() {
     local settings_file="$1"
     echo ""
-    echo "Current managed-settings.json content:"
+    echo "Current ~/.claude/settings.json content:"
     echo "======================================"
     if command -v jq >/dev/null 2>&1; then
         jq '.' "$settings_file"
@@ -270,18 +270,18 @@ main() {
         mkdir -p "$settings_dir"
     fi
     
-    # Path to managed-settings.json
-    local settings_file="$settings_dir/managed-settings.json"
+    # Path to settings.json
+    local settings_file="$settings_dir/settings.json"
     echo "Settings file: $settings_file"
     
-    # Create or update managed-settings.json
-    create_managed_settings "$settings_file"
+    # Create or update user settings.json
+    create_user_settings "$settings_file"
     
     # Display current settings
     display_settings "$settings_file"
     
     echo ""
-    echo "✅ Successfully merged telemetry environment variables into Claude Code managed settings!"
+    echo "✅ Successfully merged telemetry environment variables into Claude Code user settings!"
     echo ""
     echo "The following environment variables are now available to Claude Code:"
     echo "  - CLAUDE_CODE_ENABLE_TELEMETRY=$CLAUDE_CODE_ENABLE_TELEMETRY"
@@ -290,6 +290,7 @@ main() {
     echo "  - OTEL_LOGS_EXPORTER=$OTEL_LOGS_EXPORTER"
     echo "  - OTEL_LOG_USER_PROMPTS=$OTEL_LOG_USER_PROMPTS"
     echo "  - OTEL_METRICS_EXPORTER=$OTEL_METRICS_EXPORTER"
+    echo "  - OTEL_EXPORTER_OTLP_METRICS_ENDPOINT=$OTEL_EXPORTER_OTLP_METRICS_ENDPOINT"
     echo "  - OTEL_RESOURCE_ATTRIBUTES=$OTEL_RESOURCE_ATTRIBUTES"
     echo "  - OTEL_SERVICE_NAME=$OTEL_SERVICE_NAME"
     echo ""
@@ -314,7 +315,7 @@ main() {
 if [[ "${1:-}" == "--help" ]] || [[ "${1:-}" == "-h" ]]; then
     echo "Claude Code Telemetry Environment Variable Merger"
     echo ""
-    echo "This script configures OpenTelemetry environment variables in Claude Code's managed-settings.json file."
+    echo "This script configures OpenTelemetry environment variables in Claude Code's user settings file."
     echo ""
     echo "Usage: $0 [OPTIONS]"
     echo ""
@@ -337,7 +338,7 @@ if [[ "${1:-}" == "--help" ]] || [[ "${1:-}" == "-h" ]]; then
     echo "  - Applies command-line overrides (these take precedence over defaults)"
     echo "  - Detects your operating system (Linux, macOS, Windows/WSL)"
     echo "  - Locates the correct Claude Code settings directory"
-    echo "  - Creates or updates managed-settings.json with telemetry environment variables"
+    echo "  - Creates or updates ~/.claude/settings.json with telemetry environment variables"
     echo "  - Preserves existing environment variables if any"
     echo ""
     echo "Environment variable sources (in order of precedence):"
@@ -351,6 +352,7 @@ if [[ "${1:-}" == "--help" ]] || [[ "${1:-}" == "-h" ]]; then
     echo "  - OTEL_LOGS_EXPORTER             Logs exporter type"
     echo "  - OTEL_LOG_USER_PROMPTS          Log user prompts (0|1)"
     echo "  - OTEL_METRICS_EXPORTER          Metrics exporter type"
+    echo "  - OTEL_EXPORTER_OTLP_METRICS_ENDPOINT  OpenTelemetry metrics endpoint"
     echo "  - OTEL_RESOURCE_ATTRIBUTES       Resource attributes (key=value pairs)"
     echo "  - OTEL_SERVICE_NAME              Service name identifier"
     echo ""

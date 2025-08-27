@@ -6,7 +6,7 @@ The install script automatically:
 
 - Detects your operating system (Linux, macOS, Windows/WSL)
 - Locates the correct Claude Code settings directory
-- Creates or updates `managed-settings.json` with telemetry configuration
+- Creates or updates `~/.claude/settings.json` with telemetry configuration
 - Preserves any existing environment variables
 
 ## Usage
@@ -88,7 +88,7 @@ The `install.sh` script automatically:
 - Loads environment variables from `.env` or `.env.example`
 - Detects your operating system (Linux, macOS, Windows/WSL)
 - Locates the correct Claude Code settings directory
-- Creates or updates `managed-settings.json` with telemetry configuration
+- Creates or updates `~/.claude/settings.json` with telemetry configuration
 - Preserves any existing environment variables
 
 ### Usage
@@ -193,20 +193,15 @@ sudo yum install jq      # RHEL/CentOS
 **Changes not taking effect**:
 
 - Restart Claude Code completely
-- Verify the managed-settings.json was created:
-  - macOS: `~/Library/Application Support/claude-code/managed-settings.json`
-  - Linux: `~/.config/claude-code/managed-settings.json`
+- Verify the settings.json was created:
+  - macOS: `~/.claude/settings.json`
 
 ### Verifying Configuration
 
 Check if the configuration was applied correctly:
 
 ```bash
-# macOS
-cat ~/Library/Application\ Support/claude-code/managed-settings.json
-
-# Linux
-cat ~/.config/claude-code/managed-settings.json
+cat ~/.claude/settings.json
 ```
 
 The file should contain your environment variables in the `env` section.
@@ -223,7 +218,7 @@ After modifying the script:
    ./install.sh
    ```
 
-2. Verify the generated `managed-settings.json` contains expected values
+2. Verify the generated `~/.claude/settings.json` contains expected values
 
 3. Test with different `.env` configurations
 
