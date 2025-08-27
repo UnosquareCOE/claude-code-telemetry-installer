@@ -230,8 +230,3 @@ When making changes:
 - Update this README if adding new features
 - Follow the existing code style and error handling patterns
 
-## Security Notes
-
-- The `.env` file may contain sensitive endpoints or credentials
-- Add `.env` to `.gitignore` to prevent accidental commits
-- Use `.env.example` for documentation and defaults only
