@@ -13,7 +13,6 @@ CLI_OVERRIDE_PROTOCOL=""
 CLI_OVERRIDE_LOG_PROMPTS=""
 CLI_OVERRIDE_RESOURCE_ATTRIBUTES=""
 
-# Default environment variable values (from .env.example)
 DEFAULT_CLAUDE_CODE_ENABLE_TELEMETRY="1"
 DEFAULT_OTEL_EXPORTER_OTLP_ENDPOINT="http://cc-otel-collector-nlb-dev-05132f47b9a37526.elb.us-east-1.amazonaws.com:4318"
 DEFAULT_OTEL_EXPORTER_OTLP_PROTOCOL="http/protobuf"
