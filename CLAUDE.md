@@ -21,7 +21,7 @@ cp .env.example .env
 
 This repository contains a cross-platform installer for Claude Code's OpenTelemetry telemetry system. The core components are:
 
-- **install.sh**: Main installation script that merges environment variables into Claude Code's `managed-settings.json`
+- **install.sh**: Main installation script that merges environment variables into Claude Code's `~/.claude/settings.json`
 - **.env.example**: Template with default telemetry configuration values
 - **specs/**: Contains specifications for future features (Entra ID authentication)
 
@@ -31,7 +31,7 @@ The `install.sh` script:
 1. Loads environment variables from `.env` (or falls back to `.env.example`)
 2. Detects the operating system (Linux, macOS, Windows/WSL)
 3. Locates the correct Claude Code settings directory for the platform
-4. Creates or merges telemetry environment variables into `managed-settings.json`
+4. Creates or merges telemetry environment variables into `~/.claude/settings.json`
 5. Preserves any existing configuration while adding telemetry settings
 
 ### Cross-Platform Support
@@ -59,7 +59,7 @@ Key OpenTelemetry configuration variables:
 
 After modifying the installation script:
 1. Test with different `.env` configurations
-2. Verify `managed-settings.json` contains expected values
+2. Verify `~/.claude/settings.json` contains expected values
 3. Test on multiple platforms if possible
 
 ## Future Features
