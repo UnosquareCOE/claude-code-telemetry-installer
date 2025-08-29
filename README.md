@@ -13,11 +13,33 @@ The install script automatically:
 
 To install the telemetry script, run the following command:
 
+**User-level installation**:
+
 ```bash
 curl -s https://raw.githubusercontent.com/UnosquareCOE/claude-code-telemetry-installer/refs/heads/main/install.sh | bash
 ```
 
+**Project-level installation**:
+
+```bash
+curl -s https://raw.githubusercontent.com/UnosquareCOE/claude-code-telemetry-installer/refs/heads/main/project-install.sh | bash -- --project <my-project-name>
+```
+
 For local development or when you need to override specific settings, see the [Command-Line Overrides](#command-line-overrides) section below.
+
+## Project-Specific Installation
+
+For project-specific telemetry configuration, use the `project-install.sh` script which creates `.claude/settings.json` in your current project directory:
+
+```bash
+# Install for a specific project (required --project flag)
+./project-install.sh --project my-webapp
+
+# Or with custom endpoint
+./project-install.sh --project api-service --endpoint https://otel.company.com:4317
+```
+
+The project installer automatically adds the project name to `OTEL_RESOURCE_ATTRIBUTES` for proper telemetry categorization.
 
 ---
 
@@ -94,16 +116,22 @@ The `install.sh` script automatically:
 ### Usage
 
 ```bash
-# Run with default configuration
+# Run with default configuration (user-level settings)
 ./install.sh
+
+# Run for project-specific settings (requires --project flag)
+./project-install.sh --project my-project-name
 
 # Get help and see all options
 ./install.sh --help
+./project-install.sh --help
 ```
 
 ### Command-Line Overrides
 
 You can override environment variables directly via command-line flags, which take precedence over values in `.env` files:
+
+**User-level configuration** (`install.sh`):
 
 ```bash
 # Override endpoint and service name
@@ -114,17 +142,27 @@ You can override environment variables directly via command-line flags, which ta
 
 # Override resource attributes
 ./install.sh --resource-attributes "department=engineering,environment=production"
+```
 
-# Multiple overrides
-./install.sh --endpoint https://collector.example.com:4317 \
-             --service-name "my-team-claude" \
-             --enable-telemetry 1 \
-             --protocol grpc \
-             --log-prompts 1 \
-             --resource-attributes "team=platform,env=dev"
+**Project-level configuration** (`project-install.sh`):
+
+```bash
+# Basic project setup (project flag is required)
+./project-install.sh --project my-webapp
+
+# Project with custom endpoint
+./project-install.sh --project api-service --endpoint https://otel.company.com:4317
+
+# Project with multiple overrides
+./project-install.sh --project dev-tool \
+                     --service-name "my-team-claude" \
+                     --protocol http \
+                     --resource-attributes "team=platform,env=dev"
 ```
 
 #### Available Flags
+
+**Common flags** (available in both scripts):
 
 | Flag                            | Environment Variable           | Description                      | Valid Values     |
 | ------------------------------- | ------------------------------ | -------------------------------- | ---------------- |
@@ -134,6 +172,12 @@ You can override environment variables directly via command-line flags, which ta
 | `--protocol <grpc\|http>`       | `OTEL_EXPORTER_OTLP_PROTOCOL`  | Export protocol                  | `grpc` or `http` |
 | `--log-prompts <0\|1>`          | `OTEL_LOG_USER_PROMPTS`        | Enable logging of user prompts   | `0` or `1`       |
 | `--resource-attributes <attrs>` | `OTEL_RESOURCE_ATTRIBUTES`     | Resource attributes              | Key=value pairs  |
+
+**Project-specific flags** (only in `project-install.sh`):
+
+| Flag               | Environment Variable       | Description                            | Valid Values |
+| ------------------ | -------------------------- | -------------------------------------- | ------------ |
+| `--project <name>` | `OTEL_RESOURCE_ATTRIBUTES` | Project name (required, auto-appended) | Any string   |
 
 #### Precedence Order
 
@@ -145,11 +189,15 @@ Configuration values are applied in the following order (highest to lowest prior
 
 ### Platform Support
 
-The script supports:
+**User-level installation** (`install.sh`):
 
 - **Linux**: Uses `$XDG_CONFIG_HOME/claude-code` or `$HOME/.config/claude-code`
 - **macOS**: Uses `$HOME/Library/Application Support/claude-code`
 - **Windows**: Uses `%APPDATA%/claude-code` (via Git Bash/WSL)
+
+**Project-level installation** (`project-install.sh`):
+
+- **All platforms**: Uses `.claude/settings.json` in the current project directory
 
 ## Requirements
 
@@ -194,14 +242,19 @@ sudo yum install jq      # RHEL/CentOS
 
 - Restart Claude Code completely
 - Verify the settings.json was created:
-  - macOS: `~/.claude/settings.json`
+  - User-level: `~/.claude/settings.json`
+  - Project-level: `./.claude/settings.json`
 
 ### Verifying Configuration
 
 Check if the configuration was applied correctly:
 
 ```bash
+# For user-level configuration
 cat ~/.claude/settings.json
+
+# For project-level configuration
+cat ./.claude/settings.json
 ```
 
 The file should contain your environment variables in the `env` section.
@@ -210,17 +263,24 @@ The file should contain your environment variables in the `env` section.
 
 ### Testing Changes
 
-After modifying the script:
+After modifying the scripts:
 
 1. Test on your platform:
 
    ```bash
+   # Test user-level installation
    ./install.sh
+
+   # Test project-level installation
+   ./project-install.sh --project test-project
    ```
 
-2. Verify the generated `~/.claude/settings.json` contains expected values
+2. Verify the generated settings files contain expected values:
 
-3. Test with different `.env` configurations
+   - User-level: `~/.claude/settings.json`
+   - Project-level: `./.claude/settings.json`
+
+3. Test with different `.env` configurations and command-line overrides
 
 ### Contributing
 
@@ -229,4 +289,3 @@ When making changes:
 - Test on multiple platforms if possible
 - Update this README if adding new features
 - Follow the existing code style and error handling patterns
-
