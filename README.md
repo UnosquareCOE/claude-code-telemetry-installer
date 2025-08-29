@@ -22,7 +22,7 @@ curl -s https://raw.githubusercontent.com/UnosquareCOE/claude-code-telemetry-ins
 **Project-level installation**:
 
 ```bash
-curl -s https://raw.githubusercontent.com/UnosquareCOE/claude-code-telemetry-installer/refs/heads/main/project-install.sh | bash -- --project <my-project-name>
+curl -s https://raw.githubusercontent.com/UnosquareCOE/claude-code-telemetry-installer/refs/heads/main/project-install.sh | bash -s -- --project <my-project-name>
 ```
 
 For local development or when you need to override specific settings, see the [Command-Line Overrides](#command-line-overrides) section below.
